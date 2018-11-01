@@ -1,5 +1,6 @@
 package e.inf_b.geocollect;
 
+import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Handler;
@@ -7,6 +8,10 @@ import android.support.v4.app.FragmentActivity;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import com.google.android.gms.wearable.CapabilityClient;
+import com.google.android.gms.wearable.CapabilityInfo;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.Wearable;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Criteria;
@@ -16,6 +21,8 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -96,19 +103,23 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         mMap.setOnMyLocationClickListener(onMyLocationClickListener);
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMinZoomPreference(16);
-        final LatLng punto1 = new LatLng(-32.777386, -71.533739);
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(punto1)
-                .title("Batea")
-                .snippet("Estado:"+" "+"activo")
-                .icon(BitmapDescriptorFactory.defaultMarker( BitmapDescriptorFactory.HUE_BLUE));
-        InfoWindowData info = new InfoWindowData();
-        info.setDetalle("Detalle marcador");
-        CustomInfoWindowAdapter customInfoWindow = new CustomInfoWindowAdapter(this);
-        mMap.setInfoWindowAdapter(customInfoWindow);
-        m = mMap.addMarker(markerOptions);
-        m.setTag(info);
-        m.showInfoWindow();
+        Double [] Latitud ={-33.013207,-33.012096,-33.012813, -33.011019,-33.01124 ,-32.771897};
+        Double [] Longitud ={-71.54271,-71.543596, -71.545426,-71.543577,-71.545321, -71.53498};
+        for(int i=0; i<=5;i++) {
+            final LatLng punto1 = new LatLng(Latitud[i], Longitud[i]);
+            MarkerOptions markerOptions = new MarkerOptions();
+            markerOptions.position(punto1)
+                    .title("Batea")
+                    .snippet("Estado:" + " " + "activo")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+            InfoWindowData info = new InfoWindowData();
+            info.setDetalle("Detalle marcador");
+            CustomInfoWindowAdapter customInfoWindow = new CustomInfoWindowAdapter(this);
+            mMap.setInfoWindowAdapter(customInfoWindow);
+            m = mMap.addMarker(markerOptions);
+            m.setTag(info);
+            m.showInfoWindow();
+        }
 
     }
     @Override
@@ -180,10 +191,22 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         }
     }
     public void aceptar(Marker marker) {
+        int notification =001;
+        String id ="my_channel_01";
         Uri gmmIntentUri = Uri.parse("google.navigation:q="+marker.getPosition().latitude+","+marker.getPosition().longitude);
         Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
         mapIntent.setPackage("com.google.android.apps.maps");
-        startActivity(mapIntent);
+        PendingIntent mapPendingIntent =PendingIntent.getActivity(this,0,mapIntent,PendingIntent.FLAG_ONE_SHOT);
+        NotificationCompat.Action action =new NotificationCompat.Action.Builder(R.drawable.ic_launcher_background,getString(R.string.app_name),mapPendingIntent).build();
+        NotificationCompat.WearableExtender wearableExtender = new NotificationCompat.WearableExtender();
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this,id)
+                .setSmallIcon(R.drawable.ic_launcher_background)
+                .setContentTitle("Dirección")
+                .setContentText("texto")
+                .setContentIntent(mapPendingIntent)
+                .extend(wearableExtender.addAction(action));
+        NotificationManagerCompat notificationManager =NotificationManagerCompat.from(this);
+        notificationManager.notify(notification, notificationBuilder.build());
     }
 
     public void cancelar() {
