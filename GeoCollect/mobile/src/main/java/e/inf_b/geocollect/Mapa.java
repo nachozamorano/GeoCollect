@@ -1,28 +1,29 @@
 package e.inf_b.geocollect;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
-import android.net.Uri;
-import android.os.Handler;
-import android.support.v4.app.FragmentActivity;
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.Intent;
-import com.google.android.gms.wearable.CapabilityClient;
-import com.google.android.gms.wearable.CapabilityInfo;
-import com.google.android.gms.wearable.Node;
-import com.google.android.gms.wearable.Wearable;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Handler;
+import android.provider.Settings;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
+import android.support.v4.app.NotificationCompat.WearableExtender;
+import android.Manifest;
 import android.content.pm.PackageManager;
-import android.location.Address;
 import android.location.Criteria;
-import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -56,8 +57,10 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
     private GoogleMap mMap;
     Marker m;
-    private long lastTouchTime = -1;
-    float distance;
+    private Context mContext=Mapa.this;
+    private NotificationManager mNotificationManager;
+    private NotificationCompat.Builder mBuilder;
+    public static final String NOTIFICATION_CHANNEL_ID = "10001";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,6 +108,7 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         mMap.setMinZoomPreference(16);
         Double [] Latitud ={-33.013207,-33.012096,-33.012813, -33.011019,-33.01124 ,-32.771897};
         Double [] Longitud ={-71.54271,-71.543596, -71.545426,-71.543577,-71.545321, -71.53498};
+        String [] traslado ={"13/11/2018","14/11/2018","16/11/2018","18/11/2018","10/12/2018","1/12/2018"};
         for(int i=0; i<=5;i++) {
             final LatLng punto1 = new LatLng(Latitud[i], Longitud[i]);
             MarkerOptions markerOptions = new MarkerOptions();
@@ -113,7 +117,7 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
                     .snippet("Estado:" + " " + "activo")
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
             InfoWindowData info = new InfoWindowData();
-            info.setDetalle("Detalle marcador");
+            info.setDetalle("Fecha de traslado: "+ traslado[i]);
             CustomInfoWindowAdapter customInfoWindow = new CustomInfoWindowAdapter(this);
             mMap.setInfoWindowAdapter(customInfoWindow);
             m = mMap.addMarker(markerOptions);
@@ -191,22 +195,45 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         }
     }
     public void aceptar(Marker marker) {
-        int notification =001;
-        String id ="my_channel_01";
+        
         Uri gmmIntentUri = Uri.parse("google.navigation:q="+marker.getPosition().latitude+","+marker.getPosition().longitude);
-        Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-        mapIntent.setPackage("com.google.android.apps.maps");
-        PendingIntent mapPendingIntent =PendingIntent.getActivity(this,0,mapIntent,PendingIntent.FLAG_ONE_SHOT);
-        NotificationCompat.Action action =new NotificationCompat.Action.Builder(R.drawable.ic_launcher_background,getString(R.string.app_name),mapPendingIntent).build();
-        NotificationCompat.WearableExtender wearableExtender = new NotificationCompat.WearableExtender();
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this,id)
-                .setSmallIcon(R.drawable.ic_launcher_background)
-                .setContentTitle("Dirección")
-                .setContentText("texto")
-                .setContentIntent(mapPendingIntent)
-                .extend(wearableExtender.addAction(action));
-        NotificationManagerCompat notificationManager =NotificationManagerCompat.from(this);
-        notificationManager.notify(notification, notificationBuilder.build());
+        Intent resultIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+       resultIntent.setPackage("com.google.android.apps.maps");
+        resultIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        PendingIntent resultPendingIntent = PendingIntent.getActivity(mContext,
+                0 /* Request code */, resultIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        mBuilder = new NotificationCompat.Builder(mContext);
+        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
+        mBuilder.setDefaults(Notification.DEFAULT_ALL)
+                .setSmallIcon(R.mipmap.icono)
+                .setContentTitle("Notificación Geocollect")
+                .setContentText("Ir a la batea")
+                .setSubText("Toque la notificación para abrir Google Maps")
+                .setContentIntent(resultPendingIntent)
+                // En el teléfono aparecerá un botón en la notificación y en el reloj
+                // aparecerá un botón grande al deslizar hacia la izquierda
+                .addAction(android.R.drawable.ic_menu_mapmode, "Ver mapa", resultPendingIntent);
+
+
+        mNotificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+        {
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "NOTIFICATION_CHANNEL_NAME", importance);
+            notificationChannel.enableLights(true);
+            notificationChannel.setLightColor(Color.RED);
+            notificationChannel.enableVibration(true);
+            notificationChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            assert mNotificationManager != null;
+            mBuilder.setChannelId(NOTIFICATION_CHANNEL_ID);
+            mNotificationManager.createNotificationChannel(notificationChannel);
+        }
+        assert mNotificationManager != null;
+        mNotificationManager.notify(0 /* Request Code */, mBuilder.build());
     }
 
     public void cancelar() {
