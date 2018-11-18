@@ -11,6 +11,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NotificationCompat;
@@ -52,11 +53,12 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import java.util.List;
 import java.util.Locale;
 
-public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleMap.OnMarkerClickListener {
+public class Mapa extends FragmentActivity implements OnMapReadyCallback {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
     private GoogleMap mMap;
     Marker m;
+    String canal = "my_channel_01";
     private Context mContext=Mapa.this;
     private NotificationManager mNotificationManager;
     private NotificationCompat.Builder mBuilder;
@@ -90,7 +92,6 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        mMap.setOnMarkerClickListener(this);
         Location location = locationManager.getLastKnownLocation(provider);
         if (location != null) {
             double latitude = location.getLatitude();
@@ -109,13 +110,24 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         Double [] Latitud ={-33.013207,-33.012096,-33.012813, -33.011019,-33.01124 ,-32.771897};
         Double [] Longitud ={-71.54271,-71.543596, -71.545426,-71.543577,-71.545321, -71.53498};
         String [] traslado ={"13/11/2018","14/11/2018","16/11/2018","18/11/2018","10/12/2018","1/12/2018"};
+        String [] Estado = {"Activo","Fuera de servicio","Fuera de servicio","Fuera de servicio","Activo","Activo"};
+        MarkerOptions markerOptions = new MarkerOptions();
         for(int i=0; i<=5;i++) {
-            final LatLng punto1 = new LatLng(Latitud[i], Longitud[i]);
-            MarkerOptions markerOptions = new MarkerOptions();
-            markerOptions.position(punto1)
-                    .title("Batea")
-                    .snippet("Estado:" + " " + "activo")
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+            if (Estado[i].equals("Activo")) {
+                final LatLng punto1 = new LatLng(Latitud[i], Longitud[i]);
+                markerOptions = new MarkerOptions();
+                markerOptions.position(punto1)
+                        .title("Batea")
+                        .snippet("Estado:" + " " + Estado[i])
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+            } else {
+                final LatLng punto1 = new LatLng(Latitud[i], Longitud[i]);
+                markerOptions = new MarkerOptions();
+                markerOptions.position(punto1)
+                        .title("Batea")
+                        .snippet("Estado:" + " " + Estado[i])
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+            }
             InfoWindowData info = new InfoWindowData();
             info.setDetalle("Fecha de traslado: "+ traslado[i]);
             CustomInfoWindowAdapter customInfoWindow = new CustomInfoWindowAdapter(this);
@@ -123,27 +135,29 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
             m = mMap.addMarker(markerOptions);
             m.setTag(info);
             m.showInfoWindow();
+            mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+                @Override
+                public void onInfoWindowClick(final Marker marker) {
+                    AlertDialog.Builder dialogo1 = new AlertDialog.Builder(Mapa.this);
+                    dialogo1.setTitle("Mensaje");
+                    dialogo1.setMessage("¿Quiere ir a este punto?");
+                    dialogo1.setCancelable(false);
+                    dialogo1.setPositiveButton("Confirmar", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialogo1, int id) {
+                            aceptar(marker);
+                        }
+                    });
+                    dialogo1.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialogo1, int id) {
+                            cancelar();
+                        }
+                    });
+                    dialogo1.show();
+
+                }
+            });
         }
 
-    }
-    @Override
-    public boolean onMarkerClick(final Marker marker) {
-        AlertDialog.Builder dialogo1 = new AlertDialog.Builder(this);
-        dialogo1.setTitle("Mensaje");
-        dialogo1.setMessage("¿Quiere ir a este punto?");
-        dialogo1.setCancelable(false);
-        dialogo1.setPositiveButton("Confirmar", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialogo1, int id) {
-                aceptar(marker);
-            }
-        });
-        dialogo1.setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialogo1, int id) {
-                cancelar();
-            }
-        });
-        dialogo1.show();
-        return false;
     }
     private GoogleMap.OnMyLocationClickListener onMyLocationClickListener =
             new GoogleMap.OnMyLocationClickListener() {
@@ -195,49 +209,58 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback,GoogleM
         }
     }
     public void aceptar(Marker marker) {
-        
-        Uri gmmIntentUri = Uri.parse("google.navigation:q="+marker.getPosition().latitude+","+marker.getPosition().longitude);
-        Intent resultIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-       resultIntent.setPackage("com.google.android.apps.maps");
-        resultIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        int notificationId = 3;
 
-        PendingIntent resultPendingIntent = PendingIntent.getActivity(mContext,
-                0 /* Request code */, resultIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent viewIntent = new Intent(this, Mapa.class);
+        viewIntent.putExtra("NotiID", "Notification ID is " + notificationId);
 
-        mBuilder = new NotificationCompat.Builder(mContext);
-        mBuilder.setSmallIcon(R.mipmap.ic_launcher);
-        mBuilder.setDefaults(Notification.DEFAULT_ALL)
-                .setSmallIcon(R.mipmap.icono)
-                .setContentTitle("Notificación Geocollect")
-                .setContentText("Ir a la batea")
-                .setSubText("Toque la notificación para abrir Google Maps")
-                .setContentIntent(resultPendingIntent)
-                // En el teléfono aparecerá un botón en la notificación y en el reloj
-                // aparecerá un botón grande al deslizar hacia la izquierda
-                .addAction(android.R.drawable.ic_menu_mapmode, "Ver mapa", resultPendingIntent);
+        PendingIntent viewPendingIntent =
+                PendingIntent.getActivity(this, 0, viewIntent, 0);
+
+        Intent mapIntent = new Intent(Intent.ACTION_VIEW);
+        Uri geoUri = Uri.parse("google.navigation:q="+marker.getPosition().latitude+","+marker.getPosition().longitude);
+        mapIntent.setData(geoUri);
+        PendingIntent mapPendingIntent =
+                PendingIntent.getActivity(this, 0, mapIntent, 0);
+
+        NotificationCompat.Action action =
+                new NotificationCompat.Action.Builder(R.drawable.common_google_signin_btn_icon_dark_focused,
+                        "Ruta", mapPendingIntent)
+                        .build();
 
 
-        mNotificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationCompat.Builder notificationBuilder =
+                new NotificationCompat.Builder(this, canal)
+                        .setSmallIcon(R.mipmap.icono)
+                        .setContentTitle("Notificación Geocollect")
+                        .setContentText("Toque la notificación del reloj")
+                        .setSubText("Ir a la batea")
+                        .setContentIntent(viewPendingIntent)
+                        .setChannelId(canal)
+                        .extend(new WearableExtender().addAction(action));
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
-        {
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "NOTIFICATION_CHANNEL_NAME", importance);
-            notificationChannel.enableLights(true);
-            notificationChannel.setLightColor(Color.RED);
-            notificationChannel.enableVibration(true);
-            notificationChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            assert mNotificationManager != null;
-            mBuilder.setChannelId(NOTIFICATION_CHANNEL_ID);
-            mNotificationManager.createNotificationChannel(notificationChannel);
-        }
-        assert mNotificationManager != null;
-        mNotificationManager.notify(0 /* Request Code */, mBuilder.build());
+        mostrarNotificacion(notificationId, notificationBuilder.build());
     }
 
     public void cancelar() {
     }
+    public void mostrarNotificacion(int id, Notification notificacion) {
+        NotificationManagerCompat mNotificationManager = NotificationManagerCompat.from(this);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String name = "my channel";
+            String description = "channel description";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(canal, name, importance);
+            channel.setDescription(description);
+
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+            manager.createNotificationChannel(channel);
+        }
+
+        mNotificationManager.notify(id, notificacion);
+
+    }
 }
 
