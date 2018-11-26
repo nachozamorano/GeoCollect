@@ -31,9 +31,23 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <service android:name="e.inf_b.geocollect.MyMessagingService"></service>
+        <receiver android:name="e.inf_b.geocollect.MessageReadReceiver">
+            <intent-filter>
+                <action android:name="e.inf_b.geocollect.ACTION_MESSAGE_READ" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name="e.inf_b.geocollect.MessageReplyReceiver">
+            <intent-filter>
+                <action android:name="e.inf_b.geocollect.ACTION_MESSAGE_REPLY" />
+            </intent-filter>
+        </receiver>
 
         <activity
-            android:name=".Mapa"
+            android:name="e.inf_b.geocollect.Mapa"
             android:label="@string/title_activity_mapa">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -25,6 +25,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.RemoteInput;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -237,13 +238,18 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback {
                         .setSubText("Ir a la batea")
                         .setContentIntent(viewPendingIntent)
                         .setChannelId(canal)
-                        .extend(new WearableExtender().addAction(action));
+                        .extend(new WearableExtender().addAction(action))
+                        .setLocalOnly(false);
 
         mostrarNotificacion(notificationId, notificationBuilder.build());
+        Intent serviceIntent = new Intent(Mapa.this, MyMessagingService.class);
+        serviceIntent.setAction(MyMessagingService.SEND_MESSAGE_ACTION);
+        startService(serviceIntent);
     }
 
     public void cancelar() {
     }
+
     public void mostrarNotificacion(int id, Notification notificacion) {
         NotificationManagerCompat mNotificationManager = NotificationManagerCompat.from(this);
 
@@ -262,5 +268,14 @@ public class Mapa extends FragmentActivity implements OnMapReadyCallback {
         mNotificationManager.notify(id, notificacion);
 
     }
+    private Intent getMessageReadIntent(int id) {
+        return new Intent().setAction("GeoCollect_read")
+                .putExtra("conversation_id", id);
+    }
+    private Intent getMessageReplyIntent(int conversationId) {
+        return new Intent().setAction("GeoCollect_reply")
+                .putExtra("conversation_id", conversationId);
+    }
+
 }
 
